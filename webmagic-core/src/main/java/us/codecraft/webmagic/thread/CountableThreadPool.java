@@ -60,6 +60,7 @@ public class CountableThreadPool {
                     try {
                         condition.await();
                     } catch (InterruptedException e) {
+                    	e.printStackTrace();
                     }
                 }
             } finally {

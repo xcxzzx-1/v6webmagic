@@ -34,6 +34,7 @@ public class CustomRedirectStrategy extends LaxRedirectStrategy {
                 httpRequestWrapper.removeHeaders("Content-Length");
                 return httpRequestWrapper;
             } catch (Exception e) {
+            	e.printStackTrace();
                 logger.error("强转为HttpRequestWrapper出错");
             }
             return new HttpPost(uri);

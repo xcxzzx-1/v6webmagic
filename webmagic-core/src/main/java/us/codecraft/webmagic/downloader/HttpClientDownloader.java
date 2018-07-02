@@ -1,5 +1,13 @@
 package us.codecraft.webmagic.downloader;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -7,20 +15,19 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import us.codecraft.webmagic.ErrorUrlMap;
 import us.codecraft.webmagic.Page;
 import us.codecraft.webmagic.Request;
 import us.codecraft.webmagic.Site;
 import us.codecraft.webmagic.Task;
+import us.codecraft.webmagic.downloader.log.EsLowLevelClient;
+import us.codecraft.webmagic.downloader.log.SaveLogMysql;
 import us.codecraft.webmagic.proxy.Proxy;
 import us.codecraft.webmagic.proxy.ProxyProvider;
 import us.codecraft.webmagic.selector.PlainText;
 import us.codecraft.webmagic.utils.CharsetUtils;
 import us.codecraft.webmagic.utils.HttpClientUtils;
-
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.Map;
 
 
 /**
@@ -42,6 +49,7 @@ public class HttpClientDownloader extends AbstractDownloader {
     private ProxyProvider proxyProvider;
 
     private boolean responseHeader = true;
+    
 
     public void setHttpUriRequestConverter(HttpUriRequestConverter httpUriRequestConverter) {
         this.httpUriRequestConverter = httpUriRequestConverter;
@@ -83,10 +91,42 @@ public class HttpClientDownloader extends AbstractDownloader {
             httpResponse = httpClient.execute(requestContext.getHttpUriRequest(), requestContext.getHttpClientContext());
             page = handleResponse(request, request.getCharset() != null ? request.getCharset() : task.getSite().getCharset(), httpResponse, task);
             onSuccess(request);
+            
+            //记录日志
             logger.info("downloading page success {}", request.getUrl());
+            
+            //######################ELASTICSERCH##########################
+            EsLowLevelClient es = new EsLowLevelClient();
+            Map<String, String> params = Collections.singletonMap("pretty", "true");
+            String jsonString = "{\"url\": \"" + request.getUrl() + "\",\"status\": \"success\",\"time\": \"" + new Date().toString() + "\"}";
+          //  es.sendEsRequest("POST", "/webmagic/log", params, jsonString);
+            
+            //如果url失败过，现在成功了，需要从失败列表中删除该url
+            ErrorUrlMap.handleErrorUrlMap(request.getUrl(), "success");
+            
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            SaveLogMysql.saveLogs(task.getUUID(),request.getUrl(), "0", sdf.format(new Date()));
+            
             return page;
         } catch (IOException e) {
+        	//记录日志
             logger.warn("download page {} error", request.getUrl(), e);
+            
+            //######################ELASTICSERCH##########################
+            EsLowLevelClient es = new EsLowLevelClient();
+            Map<String, String> params = Collections.singletonMap("pretty", "true");
+            String jsonString = "{\"url\": \"" + request.getUrl() + "\",\"status\": \"error\",\"time\": \"" + new Date().toString() + "\"}";
+           // es.sendEsRequest("POST", "/webmagic/log", params, jsonString);
+            
+           //请求失败，记录该url
+            boolean flag = ErrorUrlMap.handleErrorUrlMap(request.getUrl(), "error");
+            if(!flag) {
+            	ErrorUrlMap.rewriteErrorUrl(request,task);
+            }
+            
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            SaveLogMysql.saveLogs(task.getUUID(),request.getUrl(), "1", sdf.format(new Date()));
+            
             onError(request);
             return page;
         } finally {
