@@ -168,17 +168,7 @@ webmagic的使用可以参考：[oschina openapi 应用：博客搬家](https://
 
 webmagic遵循[Apache 2.0协议](http://opensource.org/licenses/Apache-2.0)
 
-### 邮件组:
 
-Gmail：
-[https://groups.google.com/forum/#!forum/webmagic-java](https://groups.google.com/forum/#!forum/webmagic-java)
-
-QQ:
-[http://list.qq.com/cgi-bin/qf_invite?id=023a01f505246785f77c5a5a9aff4e57ab20fcdde871e988](http://list.qq.com/cgi-bin/qf_invite?id=023a01f505246785f77c5a5a9aff4e57ab20fcdde871e988)
-
-### QQ群：
-
-373225642(已满) 542327088
 
 ### 相关项目：
 
