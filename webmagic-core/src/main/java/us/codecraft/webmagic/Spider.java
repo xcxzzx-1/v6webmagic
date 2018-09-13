@@ -406,7 +406,7 @@ public class Spider implements Runnable, Task {
 		if (destroyWhenExit) {
 			close();
 		}
-		logger.info("Spider {} closed! {} pages downloaded.", getUUID(), pageCount.get());
+		logger.info("Spider11 {} closed! {} pages downloaded.", getUUID(), pageCount.get());
 
 		// 爬取数量
 		Integer counts = errorPageCount + successPageCOunt;
@@ -423,10 +423,11 @@ public class Spider implements Runnable, Task {
 		
 		String selectDispatchSql = "SELECT EXEC_START_TIME FROM  CRW_TASK_DISPATCH WHERE TASK_ID = ?";
 		
-		String slaveId =  UUID.randomUUID().toString(); // 任务id
+		String slaveId =  UUID.randomUUID().toString().toString().replace("-", ""); // 任务id
 		String slaveSql = "INSERT INTO CRW_TASK_DISPATCH_SLAVE"
 				+"(SLAVE_ID, TASK_ID, EXEC_START_TIME, EXEC_END_TIME, RUN_SECONDS, CRAWL_COUNTS,SUCCESS_RATE)"
 				+"VALUES(?, ?, ?, ?, ?, ?, ?)";
+		
 		try {
 			DecimalFormat df=new DecimalFormat(".##");
 			pstmt = conn.prepareStatement(sql);
@@ -438,7 +439,7 @@ public class Spider implements Runnable, Task {
 			pstmt.setString(6, uuid);
 
 			pstmt.executeUpdate();
-			
+			logger.info("Spider 更新调度表." + sql);
 			//查出开始执行时间
 			ResultSet rs=null;
 			String EXEC_START_TIME= null;
@@ -463,7 +464,7 @@ public class Spider implements Runnable, Task {
 			pstmt.setString(7, df.format(successRate));
 			
 			pstmt.execute();
-
+			logger.info("Spider 插入审计日志. "+ slaveSql);
 
 		} catch (SQLException e) {
 			e.printStackTrace();
