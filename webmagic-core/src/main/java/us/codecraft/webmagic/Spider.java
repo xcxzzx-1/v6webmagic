@@ -4,6 +4,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -415,19 +416,54 @@ public class Spider implements Runnable, Task {
 			successRate = (successPageCOunt * 1.0) / (counts * 1.0) * 100;
 		}
 		Connection conn = DBUtils.getConnection();
-		String sql = "UPDATE CRW_TASK_DISPATCH SET EXEC_END_TIME = ?,RUN_SECONDS = ? , CRAWL_COUNTS = ?, SUCCESS_RATE = ? WHERE TASK_ID = ?";
+		String sql = "UPDATE CRW_TASK_DISPATCH SET IS_RUN = ?, EXEC_END_TIME = ?,RUN_SECONDS = ? , CRAWL_COUNTS = ?, SUCCESS_RATE = ? WHERE TASK_ID = ?";
 		PreparedStatement pstmt = null;
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		String EXEC_END_TIME = sdf.format(new Date());
+		
+		String selectDispatchSql = "SELECT EXEC_START_TIME FROM  CRW_TASK_DISPATCH WHERE TASK_ID = ?";
+		
+		String slaveId =  UUID.randomUUID().toString(); // 任务id
+		String slaveSql = "INSERT INTO CRW_TASK_DISPATCH_SLAVE"
+				+"(SLAVE_ID, TASK_ID, EXEC_START_TIME, EXEC_END_TIME, RUN_SECONDS, CRAWL_COUNTS,SUCCESS_RATE)"
+				+"VALUES(?, ?, ?, ?, ?, ?, ?)";
 		try {
 			DecimalFormat df=new DecimalFormat(".##");
 			pstmt = conn.prepareStatement(sql);
-			pstmt.setString(1, sdf.format(new Date()));
-			pstmt.setString(2, String.valueOf(runSeconds));
-			pstmt.setString(3, String.valueOf(counts));
-			pstmt.setString(4, df.format(successRate));
-			pstmt.setString(5, uuid);
+			pstmt.setString(1, "1");
+			pstmt.setString(2, EXEC_END_TIME);
+			pstmt.setString(3, String.valueOf(runSeconds));
+			pstmt.setString(4, String.valueOf(counts));
+			pstmt.setString(5, df.format(successRate));
+			pstmt.setString(6, uuid);
 
 			pstmt.executeUpdate();
+			
+			//查出开始执行时间
+			ResultSet rs=null;
+			String EXEC_START_TIME= null;
+			pstmt.clearParameters();
+			pstmt = conn.prepareStatement(selectDispatchSql);
+			pstmt.setString(1, uuid);
+			rs=pstmt.executeQuery();
+			//获取返回的ResultSet内容
+			while (rs.next()) {
+				EXEC_START_TIME = rs.getDate(1).toString() +" "+ rs.getTime(1).toString();
+			}
+			
+			//插入crw_task_dispatch_slave  
+			pstmt.clearParameters();
+			pstmt = conn.prepareStatement(slaveSql);
+			pstmt.setString(1, slaveId);
+			pstmt.setString(2, uuid);
+			pstmt.setString(3, EXEC_START_TIME);
+			pstmt.setString(4, EXEC_END_TIME);
+			pstmt.setString(5, String.valueOf(runSeconds));
+			pstmt.setString(6, String.valueOf(counts));
+			pstmt.setString(7, df.format(successRate));
+			
+			pstmt.execute();
+
 
 		} catch (SQLException e) {
 			e.printStackTrace();
