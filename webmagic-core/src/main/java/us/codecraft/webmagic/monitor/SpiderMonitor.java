@@ -29,7 +29,7 @@ public class SpiderMonitor {
 
     private Logger logger = LoggerFactory.getLogger(getClass());
 
-    private MBeanServer mbeanServer;
+    public MBeanServer mbeanServer;
 
     private String jmxServerName;
 
@@ -106,6 +106,15 @@ public class SpiderMonitor {
 
     protected void registerMBean(SpiderStatusMXBean spiderStatus) throws MalformedObjectNameException, InstanceAlreadyExistsException, MBeanRegistrationException, NotCompliantMBeanException {
 //        ObjectName objName = new ObjectName(jmxServerName + ":name=" + spiderStatus.getName());
+    	try {
+            final MBeanInfo info = SpiderMonitor.instance().mbeanServer.getMBeanInfo(new ObjectName("WebMagic:name=" + UrlUtils.removePort(spiderStatus.getName())));
+            if (info != null) {
+                SpiderMonitor.instance().mbeanServer.unregisterMBean(new ObjectName("WebMagic:name=" + UrlUtils.removePort(spiderStatus.getName())));
+            }
+        }
+        catch (Exception e4) {
+            e4.printStackTrace();
+        }
         ObjectName objName = new ObjectName(jmxServerName + ":name=" + UrlUtils.removePort(spiderStatus.getName()));
         mbeanServer.registerMBean(spiderStatus, objName);
     }
