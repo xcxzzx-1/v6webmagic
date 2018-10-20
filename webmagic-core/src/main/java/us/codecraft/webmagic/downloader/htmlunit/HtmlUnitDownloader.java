@@ -129,8 +129,10 @@ public class HtmlUnitDownloader extends AbstractDownloader {
             //如果url失败过，现在成功了，需要从失败列表中删除该url
             ErrorUrlMap.handleErrorUrlMap(request.getUrl(), "success");
             
+            String title = page.getHtml().xpath("/html/head/title/text()").get();
+            
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            SaveLogMysql.saveLogs(task.getUUID(),request.getUrl(), "0", sdf.format(new Date()));
+            SaveLogMysql.saveLogs(task.getUUID(),request.getUrl(), title, "0", sdf.format(new Date()));
             
 			return page;
 			
@@ -152,9 +154,11 @@ public class HtmlUnitDownloader extends AbstractDownloader {
             	ErrorUrlMap.rewriteErrorUrl(request,task);
             }
 			
+            String title = page.getHtml().xpath("/html/head/title/text()").get();
+            
 			//存入mysql
 			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            SaveLogMysql.saveLogs(task.getUUID(),request.getUrl(), "1", sdf.format(new Date()));
+            SaveLogMysql.saveLogs(task.getUUID(),request.getUrl(), title, "1", sdf.format(new Date()));
 
 			onError(request);
 			return page;
