@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public class SaveLogMysql {
 
-	public static void saveLogs(String taskId, String url, String status, String time) {
+	public static void saveLogs(String taskId, String url,String title ,String status, String time) {
 		String uuid = UUID.randomUUID().toString().replaceAll("-", "");
 		Connection conn = DBUtils.getConnection();
 		String sql = "INSERT INTO CRW_TASK_LOG VALUES(?,?,?,?,?,?)";
@@ -17,7 +17,7 @@ public class SaveLogMysql {
 			pstmt.setString(1, uuid);
 			pstmt.setString(2, taskId);
 			pstmt.setString(3, url);
-			pstmt.setString(4, "");
+			pstmt.setString(4, title);
 			pstmt.setString(5, status);
 			pstmt.setString(6, time);
 
