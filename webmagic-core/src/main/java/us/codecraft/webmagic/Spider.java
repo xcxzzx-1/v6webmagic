@@ -21,6 +21,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import javax.management.JMException;
+import javax.management.MBeanInfo;
+import javax.management.ObjectName;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.SerializationUtils;
@@ -336,20 +338,20 @@ public class Spider implements Runnable, Task {
 
 	@Override
 	public void run() {
-		  // 加入spider监控信息
-		  SpiderMonitor spiderMonitor = new SpiderMonitor(){
-	            @Override
-	            protected SpiderStatusMXBean getSpiderStatusMBean(Spider spider, MonitorSpiderListener monitorSpiderListener) {
-	                return new SpiderStatus(spider, monitorSpiderListener);
-	            }
-	        };
-		  try {
-			   spiderMonitor.register(this);
-		  } catch (JMException e1) {
-			   e1.printStackTrace();
-		  }
-		
-		
+		// 加入spider监控信息
+		SpiderMonitor spiderMonitor = new SpiderMonitor() {
+			@Override
+			protected SpiderStatusMXBean getSpiderStatusMBean(Spider spider,
+					MonitorSpiderListener monitorSpiderListener) {
+				return new SpiderStatus(spider, monitorSpiderListener);
+			}
+		};
+		try {
+			spiderMonitor.register(this);
+		} catch (JMException e1) {
+			e1.printStackTrace();
+		}
+
 		checkRunningStat();
 		initComponent();
 		logger.info("Spider {} started!", getUUID());
@@ -383,10 +385,10 @@ public class Spider implements Runnable, Task {
 		// 监控的原理是加入了一个Listener的List，这里读取一个即可
 		Integer errorPageCount = 0;
 		Integer successPageCOunt = 0;
-		
+
 		if (CollectionUtils.isNotEmpty(spiderListeners)) {
 			for (SpiderListener spiderListener : spiderListeners) {
-				if(spiderListener instanceof MonitorSpiderListener) {
+				if (spiderListener instanceof MonitorSpiderListener) {
 					errorPageCount = ((MonitorSpiderListener) spiderListener).getErrorCount().get();
 					successPageCOunt = ((MonitorSpiderListener) spiderListener).getSuccessCount().get();
 				}
@@ -394,7 +396,6 @@ public class Spider implements Runnable, Task {
 		}
 
 		int runSeconds = (int) (System.currentTimeMillis() - getStartTime().getTime()) / 1000;
-
 
 		// 从当前正在运行的spider列表中删除相应的uuid
 		// 该uuid在任务启动时设定
@@ -406,7 +407,7 @@ public class Spider implements Runnable, Task {
 		if (destroyWhenExit) {
 			close();
 		}
-		logger.info("Spider11 {} closed! {} pages downloaded.", getUUID(), pageCount.get());
+		logger.info("Spider {} closed! {} pages downloaded.", getUUID(), pageCount.get());
 
 		// 爬取数量
 		Integer counts = errorPageCount + successPageCOunt;
@@ -420,39 +421,39 @@ public class Spider implements Runnable, Task {
 		PreparedStatement pstmt = null;
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		String EXEC_END_TIME = sdf.format(new Date());
-		
+
 		String selectDispatchSql = "SELECT EXEC_START_TIME FROM  CRW_TASK_DISPATCH WHERE TASK_ID = ?";
-		
-		String slaveId =  UUID.randomUUID().toString().toString().replace("-", ""); // 任务id
+
+		String slaveId = UUID.randomUUID().toString().toString().replace("-", ""); // 任务id
 		String slaveSql = "INSERT INTO CRW_TASK_DISPATCH_SLAVE"
-				+"(SLAVE_ID, TASK_ID, EXEC_START_TIME, EXEC_END_TIME, RUN_SECONDS, CRAWL_COUNTS,SUCCESS_RATE)"
-				+"VALUES(?, ?, ?, ?, ?, ?, ?)";
-		
+				+ "(SLAVE_ID, TASK_ID, EXEC_START_TIME, EXEC_END_TIME, RUN_SECONDS, CRAWL_COUNTS,SUCCESS_RATE)"
+				+ "VALUES(?, ?, ?, ?, ?, ?, ?)";
+
 		try {
-			DecimalFormat df=new DecimalFormat(".##");
+			DecimalFormat df = new DecimalFormat(".##");
 			pstmt = conn.prepareStatement(sql);
 			pstmt.setString(1, "1");
 			pstmt.setString(2, EXEC_END_TIME);
 			pstmt.setString(3, String.valueOf(runSeconds));
 			pstmt.setString(4, String.valueOf(counts));
-			pstmt.setString(5, df.format(successRate));
+			pstmt.setString(5, String.format("%.2f", successRate));
 			pstmt.setString(6, uuid);
 
 			pstmt.executeUpdate();
 			logger.info("Spider 更新调度表." + sql);
-			//查出开始执行时间
-			ResultSet rs=null;
-			String EXEC_START_TIME= null;
+			// 查出开始执行时间
+			ResultSet rs = null;
+			String EXEC_START_TIME = null;
 			pstmt.clearParameters();
 			pstmt = conn.prepareStatement(selectDispatchSql);
 			pstmt.setString(1, uuid);
-			rs=pstmt.executeQuery();
-			//获取返回的ResultSet内容
+			rs = pstmt.executeQuery();
+			// 获取返回的ResultSet内容
 			while (rs.next()) {
-				EXEC_START_TIME = rs.getDate(1).toString() +" "+ rs.getTime(1).toString();
+				EXEC_START_TIME = rs.getDate(1).toString() + " " + rs.getTime(1).toString();
 			}
-			
-			//插入crw_task_dispatch_slave  
+
+			// 插入crw_task_dispatch_slave
 			pstmt.clearParameters();
 			pstmt = conn.prepareStatement(slaveSql);
 			pstmt.setString(1, slaveId);
@@ -461,10 +462,10 @@ public class Spider implements Runnable, Task {
 			pstmt.setString(4, EXEC_END_TIME);
 			pstmt.setString(5, String.valueOf(runSeconds));
 			pstmt.setString(6, String.valueOf(counts));
-			pstmt.setString(7, df.format(successRate));
-			
+			pstmt.setString(7, String.format("%.2f", successRate));
+
 			pstmt.execute();
-			logger.info("Spider 插入审计日志. "+ slaveSql);
+			logger.info("Spider 插入审计日志. " + slaveSql);
 
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -475,6 +476,17 @@ public class Spider implements Runnable, Task {
 				e.printStackTrace();
 			}
 			DBUtils.closeConnection(conn);
+		}
+
+		try {
+			MBeanInfo info = SpiderMonitor.instance().mbeanServer
+					.getMBeanInfo(new ObjectName("WebMagic" + ":name=" + UrlUtils.removePort(getUUID())));
+			if (info != null) {
+				SpiderMonitor.instance().mbeanServer
+						.unregisterMBean(new ObjectName("WebMagic" + ":name=" + UrlUtils.removePort(getUUID())));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 
 	}
@@ -552,7 +564,7 @@ public class Spider implements Runnable, Task {
 			onDownloadSuccess(request, page);
 		} else {
 			logger.info("Spider 记录失败次数 : url = " + request.getUrl());
-			//失败的时候记录失败次数
+			// 失败的时候记录失败次数
 			onError(request);
 			////////////////////////
 			onDownloaderFail(request);
@@ -600,7 +612,8 @@ public class Spider implements Runnable, Task {
 						cycleTriedTimes));
 			}
 		}
-		logger.info("失败地址重新读取： url = " + request.getUrl() + " ###  CYCLE_TRIED_TIMES ： " + request.getExtra(Request.CYCLE_TRIED_TIMES));
+		logger.info("失败地址重新读取： url = " + request.getUrl() + " ###  CYCLE_TRIED_TIMES ： "
+				+ request.getExtra(Request.CYCLE_TRIED_TIMES));
 		sleep(site.getRetrySleepTime());
 	}
 
