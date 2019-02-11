@@ -10,7 +10,7 @@ public class SaveLogMysql {
 	public static void saveLogs(String taskId, String url,String title ,String status, String time) {
 		String uuid = UUID.randomUUID().toString().replaceAll("-", "");
 		Connection conn = DBUtils.getConnection();
-		String sql = "INSERT INTO CRW_TASK_LOG VALUES(?,?,?,?,?,?)";
+		String sql = "INSERT INTO CRW_TASK_LOG VALUES(?,?,?,?,?,?,?)";
 		PreparedStatement pstmt = null;
 		try {
 			pstmt = conn.prepareStatement(sql);
@@ -20,6 +20,8 @@ public class SaveLogMysql {
 			pstmt.setString(4, title);
 			pstmt.setString(5, status);
 			pstmt.setString(6, time);
+			//增加年月日
+			pstmt.setString(7, time.substring(0, 10).replace("-", ""));
 
 			pstmt.executeUpdate();
 
